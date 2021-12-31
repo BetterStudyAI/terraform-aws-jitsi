@@ -58,42 +58,42 @@ locals {
 # --------------------------------------------------------------------------
 # OPTIONAL: Generate secure RSA Key Pair
 # --------------------------------------------------------------------------
-resource "tls_private_key" "jitsi" {
+resource "tls_private_key" "gitsi" {
   count = var.key_pair_name == null ? 1 : 0
 
   algorithm = "RSA"
   rsa_bits  = 4096
 }
 
-resource "aws_key_pair" "jitsi" {
+resource "aws_key_pair" "gitsi" {
   count = var.key_pair_name == null ? 1 : 0
 
   key_name   = var.name
-  public_key = tls_private_key.jitsi[0].public_key_openssh
+  public_key = tls_private_key.gitsi[0].public_key_openssh
 }
 
 # --------------------------------------------------------------------------
 # OPTIONAL: SSM Parameter Store
 # --------------------------------------------------------------------------
-resource "aws_ssm_parameter" "jitsi_ssm_key_pair_private" {
+resource "aws_ssm_parameter" "gitsi_ssm_key_pair_private" {
   count = var.key_pair_name == null ? 1 : 0
 
-  name        = "/jitsi/id_rsa"
-  description = "SSH Private Key for Jitsi - ${var.name}"
+  name        = "/gitsi/id_rsa"
+  description = "SSH Private Key for gitsi - ${var.name}"
   type        = "SecureString"
-  value       = tls_private_key.jitsi[0].private_key_pem
+  value       = tls_private_key.gitsi[0].private_key_pem
   overwrite   = true
 
   tags = local.tags
 }
 
-resource "aws_ssm_parameter" "jitsi_ssm_key_pair_public" {
+resource "aws_ssm_parameter" "gitsi_ssm_key_pair_public" {
   count = var.key_pair_name == null ? 1 : 0
 
-  name        = "/jitsi/id_rsa.pub"
-  description = "SSH Public Key for Jitsi - ${var.name}"
+  name        = "/gitsi/id_rsa.pub"
+  description = "SSH Public Key for gitsi - ${var.name}"
   type        = "String"
-  value       = tls_private_key.jitsi[0].public_key_openssh
+  value       = tls_private_key.gitsi[0].public_key_openssh
   overwrite   = true
 
   tags = local.tags
@@ -103,9 +103,9 @@ resource "aws_ssm_parameter" "jitsi_ssm_key_pair_public" {
 # --------------------------------------------------------------------------
 # Security Group
 # --------------------------------------------------------------------------
-resource "aws_security_group" "jitsi" {
+resource "aws_security_group" "gitsi" {
   name_prefix = "${var.name}-"
-  description = "Jitsi Meet"
+  description = "gitsi Meet"
   vpc_id      = var.vpc_id
 
   tags = local.tags
@@ -119,7 +119,7 @@ resource "aws_security_group_rule" "letsencrypt" {
   protocol          = "tcp"
   cidr_blocks       = ["0.0.0.0/0"] #tfsec:ignore:AWS006
   ipv6_cidr_blocks  = ["::/0"]
-  security_group_id = aws_security_group.jitsi.id
+  security_group_id = aws_security_group.gitsi.id
 }
 
 resource "aws_security_group_rule" "ssh" {
@@ -131,11 +131,11 @@ resource "aws_security_group_rule" "ssh" {
   to_port           = 22
   protocol          = "tcp"
   cidr_blocks       = [each.value]
-  security_group_id = aws_security_group.jitsi.id
+  security_group_id = aws_security_group.gitsi.id
 }
 
 resource "aws_security_group_rule" "tcp" {
-  for_each = var.jitsi_cidrs
+  for_each = var.gitsi_cidrs
 
   description       = "TCP: ${each.key}"
   type              = "ingress"
@@ -143,11 +143,11 @@ resource "aws_security_group_rule" "tcp" {
   to_port           = 443
   protocol          = "tcp"
   cidr_blocks       = [each.value]
-  security_group_id = aws_security_group.jitsi.id
+  security_group_id = aws_security_group.gitsi.id
 }
 
 resource "aws_security_group_rule" "udp" {
-  for_each = var.jitsi_cidrs
+  for_each = var.gitsi_cidrs
 
   description       = "UDP: ${each.key}"
   type              = "ingress"
@@ -155,7 +155,7 @@ resource "aws_security_group_rule" "udp" {
   to_port           = 10000
   protocol          = "udp"
   cidr_blocks       = [each.value]
-  security_group_id = aws_security_group.jitsi.id
+  security_group_id = aws_security_group.gitsi.id
 }
 
 resource "aws_security_group_rule" "egress" {
@@ -166,13 +166,13 @@ resource "aws_security_group_rule" "egress" {
   protocol          = "-1"
   cidr_blocks       = ["0.0.0.0/0"] #tfsec:ignore:AWS007
   ipv6_cidr_blocks  = ["::/0"]
-  security_group_id = aws_security_group.jitsi.id
+  security_group_id = aws_security_group.gitsi.id
 }
 
 # --------------------------------------------------------------------------
 # CloudWatch Log Group
 # --------------------------------------------------------------------------
-resource "aws_cloudwatch_log_group" "jitsi" {
+resource "aws_cloudwatch_log_group" "gitsi" {
   name              = var.name
   retention_in_days = var.cw_retention
   kms_key_id        = var.cw_kms_arn
@@ -183,16 +183,16 @@ resource "aws_cloudwatch_log_group" "jitsi" {
 # --------------------------------------------------------------------------
 # Launch Template
 # --------------------------------------------------------------------------
-resource "aws_launch_template" "jitsi" {
+resource "aws_launch_template" "gitsi" {
   name = var.name
 
   iam_instance_profile {
-    name = aws_iam_instance_profile.jitsi.name
+    name = aws_iam_instance_profile.gitsi.name
   }
 
   image_id      = data.aws_ami.ubuntu.id
   instance_type = var.ec2_instance_type
-  key_name      = var.key_pair_name == null ? aws_key_pair.jitsi[0].id : var.key_pair_name
+  key_name      = var.key_pair_name == null ? aws_key_pair.gitsi[0].id : var.key_pair_name
   ebs_optimized = true
 
   block_device_mappings {
@@ -216,13 +216,13 @@ resource "aws_launch_template" "jitsi" {
     domain                   = var.domain
     host                     = var.host
     letsencrypt_email        = var.letsencrypt_email
-    log_group_name           = aws_cloudwatch_log_group.jitsi.id
+    log_group_name           = aws_cloudwatch_log_group.gitsi.id
     name                     = var.name
     public_zone_id           = var.public_zone_id
     private_zone_id          = var.private_zone_id
     timezone                 = var.timezone
-    prosody_user             = var.jitsi_admin_username
-    prosody_password         = var.jitsi_admin_password
+    prosody_user             = var.gitsi_admin_username
+    prosody_password         = var.gitsi_admin_password
     enable_welcome_page      = var.enable_welcome_page
     default_background_color = var.default_background_color
     watermark_url            = var.watermark_url
@@ -236,7 +236,7 @@ resource "aws_launch_template" "jitsi" {
 
   network_interfaces {
     associate_public_ip_address = true
-    security_groups             = [aws_security_group.jitsi.id]
+    security_groups             = [aws_security_group.gitsi.id]
   }
 
 
@@ -261,16 +261,16 @@ resource "aws_launch_template" "jitsi" {
 # --------------------------------------------------------------------------
 # AutoScalingGroup
 # --------------------------------------------------------------------------
-resource "aws_autoscaling_group" "jitsi" {
+resource "aws_autoscaling_group" "gitsi" {
   name              = var.name
   max_size          = 1
   min_size          = 1
-  desired_capacity  = 1
-  force_delete      = true
+  desired_capacity  = 1 #change it back to 1 to reinstall the instances
+  force_delete      = false
   health_check_type = "EC2"
 
   launch_template {
-    id      = aws_launch_template.jitsi.id
+    id      = aws_launch_template.gitsi.id
     version = "$Latest"
   }
 
@@ -284,7 +284,7 @@ resource "aws_autoscaling_group" "jitsi" {
 # --------------------------------------------------------------------------
 # SNS Topic
 # --------------------------------------------------------------------------
-resource "aws_sns_topic" "jitsi" { #tfsec:ignore:AWS016
+resource "aws_sns_topic" "gitsi" { #tfsec:ignore:AWS016
   # TODO: add encrypted SNS topic (+ test)
   # kms_master_key_id = "alias/aws/sns"
   name = var.name
@@ -295,15 +295,15 @@ resource "aws_sns_topic" "jitsi" { #tfsec:ignore:AWS016
 # --------------------------------------------------------------------------
 # AutoScaling notification --> SNS topic
 # --------------------------------------------------------------------------
-resource "aws_autoscaling_notification" "jitsi" {
-  group_names = [aws_autoscaling_group.jitsi.name]
+resource "aws_autoscaling_notification" "gitsi" {
+  group_names = [aws_autoscaling_group.gitsi.name]
   notifications = [
     "autoscaling:EC2_INSTANCE_LAUNCH",
     "autoscaling:EC2_INSTANCE_TERMINATE",
     "autoscaling:EC2_INSTANCE_LAUNCH_ERROR",
     "autoscaling:EC2_INSTANCE_TERMINATE_ERROR",
   ]
-  topic_arn = aws_sns_topic.jitsi.arn
+  topic_arn = aws_sns_topic.gitsi.arn
 }
 
 
@@ -315,3 +315,30 @@ resource "aws_eip" "eip" {
 
   tags = local.tags
 }
+
+/* module "gitsi" {
+  source     = "hajowieland/gitsi/aws"
+  version    = "1.0.0"
+
+  aws_region = "us-east-1"
+
+  name   = "gitsi-meet"
+  host   = "meet"
+  domain = "etherpad.live" # should match public and private hosted zone
+  # will result in FQDN => meet.example.com
+
+  ec2_instance_type = "t3a.medium"
+  vpc_id            = "vpc-07111706dec082a00"
+  public_subnet_ids = [
+  "subnet-076a31698ea5fb64c", 
+  "subnet-0913bab73b06a8bf3", 
+  "subnet-0ba21dba4a5396dae", 
+  "subnet-047d7be537e01ad05",
+  "subnet-04f6d7f09af4a7ece",
+  "subnet-089bb496af275cc9b"]
+  
+  public_zone_id  = "Z02387042AB1AMRZU3PCB"
+  private_zone_id = "Z0392683277D63W4GMJW5"
+  
+  letsencrypt_email = "sherzodkar11@gmail.com"
+} */

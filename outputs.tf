@@ -1,5 +1,5 @@
 output "fqdn" {
-  description = "FQDN of Jitsi-Meet"
+  description = "FQDN of gitsi-meet"
   value       = "${var.host}.${var.domain}"
 }
 
@@ -10,20 +10,20 @@ output "endpoint" {
 
 output "instance_profile_arn" {
   description = "ARN of EC2 Instance Profile"
-  value       = aws_iam_instance_profile.jitsi.arn
+  value       = aws_iam_instance_profile.gitsi.arn
 }
 
 output "sns_topic_arn" {
-  description = "Jitsi ASG scaling events SNS topic ARN"
-  value       = aws_sns_topic.jitsi.arn
+  description = "gitsi ASG scaling events SNS topic ARN"
+  value       = aws_sns_topic.gitsi.arn
 }
 
 output "sg_id" {
-  description = "Jitsi SG ID (e.g. for adding it outside of the module to other SGs)"
-  value       = aws_security_group.jitsi.id
+  description = "gitsi SG ID (e.g. for adding it outside of the module to other SGs)"
+  value       = aws_security_group.gitsi.id
 }
 
 output "role_arn" {
   description = "ARN of EC2 role"
-  value       = aws_iam_role.jitsi.arn
+  value       = aws_iam_role.gitsi.arn
 }
