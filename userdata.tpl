@@ -16,7 +16,7 @@ function associate_eip() {
   export INSTANCE_ID=$(curl -sLf http://169.254.169.254/latest/meta-data/instance-id)
 
   # Get free EIPs with matching Name tag and which are not associated with an InstanceId
-  for eip in $(aws ec2 describe-addresses --filters Name=tag:Name,Values=${name} --query 'Addresses[*]' --output json | jq -r '.[] | select(.InstanceId == null)  | .AllocationId')
+  for eip in $(aws ec2 describe-addresses --filters Name=tag:Name,Values=${name} --query 'Addresses[*]' --output json | jq -r '.[] | .AllocationId')
   do
     if [ "$eip" == null ]
     then
@@ -72,7 +72,7 @@ EOF
     unset AWS_ACCESS_KEY_ID
     unset AWS_SECRET_ACCESS_KEY
     unset AWS_SESSION_TOKEN
-    creds=$(aws sts assume-role --role-arn "${arn_role}" --role-session-name gitsi | jq -r '.Credentials')
+    creds=$(aws sts assume-role --role-arn "${arn_role}" --role-session-name jitsi | jq -r '.Credentials')
     export AWS_ACCESS_KEY_ID=$(echo $creds | jq -r '.AccessKeyId')
     export AWS_SECRET_ACCESS_KEY=$(echo $creds | jq -r '.SecretAccessKey')
     export AWS_SESSION_TOKEN=$(echo $creds | jq -r '.SessionToken')
@@ -109,7 +109,7 @@ EOF
     unset AWS_ACCESS_KEY_ID
     unset AWS_SECRET_ACCESS_KEY
     unset AWS_SESSION_TOKEN
-    creds=$(aws sts assume-role --role-arn ${arn_role} --role-session-name gitsi | jq -r '.Credentials')
+    creds=$(aws sts assume-role --role-arn ${arn_role} --role-session-name jitsi | jq -r '.Credentials')
     export AWS_ACCESS_KEY_ID=$(echo $creds | jq -r '.AccessKeyId')
     export AWS_SECRET_ACCESS_KEY=$(echo $creds | jq -r '.SecretAccessKey')
     export AWS_SESSION_TOKEN=$(echo $creds | jq -r '.SessionToken')
@@ -118,16 +118,16 @@ EOF
   aws route53 change-resource-record-sets --hosted-zone-id ${public_zone_id} --change-batch file://$file
 }
 
-function add_gitsi_sources(){
-  # Add gitsi sources
-  echo 'deb https://download.gitsi.org stable/' >> /etc/apt/sources.list.d/gitsi-stable.list
-  wget -qO - https://download.gitsi.org/gitsi-key.gpg.key | apt-key add -
+function add_jitsi_sources(){
+  # Add jitsi sources
+  echo 'deb https://download.jitsi.org stable/' >> /etc/apt/sources.list.d/jitsi-stable.list
+  wget -qO - https://download.jitsi.org/jitsi-key.gpg.key | apt-key add -
   apt-get update
 }
 
 function install_etherpad(){
   # Install Etherpad
-  curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
+  curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
   apt install -y nodejs
   cd /opt/ || exit
   adduser --system --home /opt/etherpad --group etherpad-lite
@@ -169,15 +169,22 @@ function raise_system_limits() {
   systemctl daemon-reload
 }
 
-function configure_gitsi_install() {
-  # Configure gitsi Install
-  echo "gitsi-videobridge gitsi-videobridge/jvb-hostname string $HOSTNAME" | debconf-set-selections
-  echo "gitsi-meet-web-config gitsi-meet/cert-choice select 'Generate a new self-signed certificate'" | debconf-set-selections
+function configure_jitsi_install() {
+  # Configure jitsi Install
+  echo "jitsi-videobridge jitsi-videobridge/jvb-hostname string $HOSTNAME" | debconf-set-selections
+  echo "jitsi-meet-web-config jitsi-meet/cert-choice select 'Generate a new self-signed certificate'" | debconf-set-selections
 }
 
-function install_gitsi() {
-  # Install gitsi, gitsi PostgreSQL support
-  apt-get --option=Dpkg::Options::=--force-confold --option=Dpkg::options::=--force-unsafe-io --assume-yes --quiet install gitsi-meet lua-dbi-mysql
+function install_jitsi() {
+  # Install jitsi, jitsi PostgreSQL support
+  echo deb http://packages.prosody.im/debian $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list
+  wget https://prosody.im/files/prosody-debian-packages.key -O- | sudo apt-key add -
+  curl https://download.jitsi.org/jitsi-key.gpg.key | sudo sh -c 'gpg --dearmor > /usr/share/keyrings/jitsi-keyring.gpg'
+  echo 'deb [signed-by=/usr/share/keyrings/jitsi-keyring.gpg] https://download.jitsi.org stable/' | sudo tee /etc/apt/sources.list.d/jitsi-stable.list > /dev/null
+
+  # update all package sources
+  sudo apt update
+  apt-get --option=Dpkg::Options::=--force-confold --option=Dpkg::options::=--force-unsafe-io --assume-yes --quiet install jitsi-meet lua-dbi-mysql
 }
 
 function configure_prosody() {
@@ -231,7 +238,7 @@ EOT
 }
 function configure_authentication() {
   # Configure Authentication
-  sed -i "s|// anonymousdomain:.*|anonymousdomain: 'guest.$HOSTNAME',|g" /etc/gitsi/meet/$HOSTNAME-config.js
+  sed -i "s|// anonymousdomain:.*|anonymousdomain: 'guest.$HOSTNAME',|g" /etc/jitsi/meet/$HOSTNAME-config.js
   sed -i "s/authentication = \"anonymous\"/authentication = \"internal_plain\"/g" /etc/prosody/conf.avail/$HOSTNAME.cfg.lua
   cat <<EOT >> /etc/prosody/conf.avail/$HOSTNAME.cfg.lua
 
@@ -240,7 +247,7 @@ VirtualHost "guest.$HOSTNAME"
     c2s_require_encryption = false
 EOT
 
-  echo "org.gitsi.jicofo.auth.URL=XMPP:$HOSTNAME" >> /etc/gitsi/jicofo/sip-communicator.properties
+  echo "org.jitsi.jicofo.auth.URL=XMPP:$HOSTNAME" >> /etc/jitsi/jicofo/sip-communicator.properties
 }
 
 function add_user() {
@@ -248,30 +255,30 @@ function add_user() {
 }
 
 function configure_nginx() {
-  cp /usr/share/gitsi-meet/interface_config.js /etc/gitsi/meet/$HOSTNAME-interface_config.js
+  cp /usr/share/jitsi-meet/interface_config.js /etc/jitsi/meet/$HOSTNAME-interface_config.js
   sed -i "s|^}|\    location ^~ /etherpad/ {\n        proxy_pass http://localhost:9001/;\n        proxy_set_header X-Forwarded-For \$remote_addr;\n        proxy_buffering off;\n        proxy_set_header       Host \$host;\n    }\n}|g" /etc/nginx/sites-enabled/$HOSTNAME.conf
-  sed -i "s|^}|\    location = /interface_config.js {\n        alias /etc/gitsi/meet/$HOSTNAME-interface_config.js;\n    }\n}|g" /etc/nginx/sites-enabled/$HOSTNAME.conf
+  sed -i "s|^}|\    location = /interface_config.js {\n        alias /etc/jitsi/meet/$HOSTNAME-interface_config.js;\n    }\n}|g" /etc/nginx/sites-enabled/$HOSTNAME.conf
 }
 
 function configure_meet() {
-  sed -i "/makeJsonParserHappy.*/i\    etherpad_base: 'https://$HOSTNAME/etherpad/p/'", /etc/gitsi/meet/$HOSTNAME-config.js
-  sed -i "/defaultLanguage/c\    defaultLanguage: '${default_language}'", /etc/gitsi/meet/$HOSTNAME-config.js
-  sed -i "/enableWelcomePage/c\    enableWelcomePage: ${enable_welcome_page}," /etc/gitsi/meet/$HOSTNAME-config.js
-  # enable layer suspension to bring down client CPU usage: https://github.com/gitsi/gitsi-meet/issues/5464#issuecomment-698996303
-  sed -i "/enableLayerSuspension/c\    enableLayerSuspension: true," /etc/gitsi/meet/$HOSTNAME-config.js
+  sed -i "/makeJsonParserHappy.*/i\    etherpad_base: 'https://$HOSTNAME/etherpad/p/'", /etc/jitsi/meet/$HOSTNAME-config.js
+  sed -i "/defaultLanguage/c\    defaultLanguage: '${default_language}'", /etc/jitsi/meet/$HOSTNAME-config.js
+  sed -i "/enableWelcomePage/c\    enableWelcomePage: ${enable_welcome_page}," /etc/jitsi/meet/$HOSTNAME-config.js
+  # enable layer suspension to bring down client CPU usage: https://github.com/jitsi/jitsi-meet/issues/5464#issuecomment-698996303
+  sed -i "/enableLayerSuspension/c\    enableLayerSuspension: true," /etc/jitsi/meet/$HOSTNAME-config.js
 
-  sed -i "/DEFAULT_BACKGROUND/c\    DEFAULT_BACKGROUND: '${default_background_color}'," /etc/gitsi/meet/$HOSTNAME-interface_config.js
-  sed -i "/DEFAULT_LOGO_URL/c\    DEFAULT_LOGO_URL: '${watermark_url}'," /etc/gitsi/meet/$HOSTNAME-interface_config.js
-  sed -i "/LANG_DETECTION/c\    LANG_DETECTION: ${language_detection}," /etc/gitsi/meet/$HOSTNAME-interface_config.js
+  sed -i "/DEFAULT_BACKGROUND/c\    DEFAULT_BACKGROUND: '${default_background_color}'," /etc/jitsi/meet/$HOSTNAME-interface_config.js
+  sed -i "/DEFAULT_LOGO_URL/c\    DEFAULT_LOGO_URL: '${watermark_url}'," /etc/jitsi/meet/$HOSTNAME-interface_config.js
+  sed -i "/LANG_DETECTION/c\    LANG_DETECTION: ${language_detection}," /etc/jitsi/meet/$HOSTNAME-interface_config.js
 }
 
 function configure_videobridge_stats() {
   # this makes the stats call available to clients outside this machine
   # make sure that you configure the security groups correctly
-  sed -i "/JVB_OPTS/c\JVB_OPTS=\"--apis=rest,xmpp\"" /etc/gitsi/videobridge/config
-  echo "org.gitsi.videobridge.ENABLE_STATISTICS=true" >> /etc/gitsi/videobridge/sip-communicator.properties
-  echo "org.gitsi.videobridge.STATISTICS_TRANSPORT=muc,colibri" >> /etc/gitsi/videobridge/sip-communicator.properties
-  echo "org.gitsi.videobridge.rest.private.jetty.host=${host}.${domain}" >> /etc/gitsi/videobridge/sip-communicator.properties
+  sed -i "/JVB_OPTS/c\JVB_OPTS=\"--apis=rest,xmpp\"" /etc/jitsi/videobridge/config
+  echo "org.jitsi.videobridge.ENABLE_STATISTICS=true" >> /etc/jitsi/videobridge/sip-communicator.properties
+  echo "org.jitsi.videobridge.STATISTICS_TRANSPORT=muc,colibri" >> /etc/jitsi/videobridge/sip-communicator.properties
+  echo "org.jitsi.videobridge.rest.private.jetty.host=${host}.${domain}" >> /etc/jitsi/videobridge/sip-communicator.properties
 }
 
 function create_awscli_conf() {
@@ -329,12 +336,12 @@ function create_awslogs_conf() {
             "log_stream_name": "{instance_id}/kern.log"
           },
           {
-            "file_path": "/var/log/gitsi/jicofo.log",
+            "file_path": "/var/log/jitsi/jicofo.log",
             "log_group_name": "${log_group_name}",
             "log_stream_name": "{instance_id}/jicofo.log"
           },
           {
-            "file_path": "/var/log/gitsi/jvb.log",
+            "file_path": "/var/log/jitsi/jvb.log",
             "log_group_name": "${log_group_name}",
             "log_stream_name": "{instance_id}/jvb.log"
           },
@@ -370,11 +377,11 @@ function install_coudwatchagent() {
 }
 
 function letsencrypt() {
-  sed -i "s/^read EMAIL/export EMAIL=\"${letsencrypt_email}\"/g" /usr/share/gitsi-meet/scripts/install-letsencrypt-cert.sh
+  sed -i "s/^read EMAIL/export EMAIL=\"${letsencrypt_email}\"/g" /usr/share/jitsi-meet/scripts/install-letsencrypt-cert.sh
   FILE=/etc/letsencrypt/live/$HOSTNAME/cert.pem
   if [ ! -f "$FILE" ]; then
     echo "Getting LetsEncrypt cert ..."
-    /usr/share/gitsi-meet/scripts/install-letsencrypt-cert.sh
+    /usr/share/jitsi-meet/scripts/install-letsencrypt-cert.sh
   else
     echo "LetsEncrypt cert found, do NOT install again"
   fi
@@ -386,7 +393,7 @@ function restart_services() {
   systemctl restart nginx
   systemctl restart prosody
   systemctl restart jicofo
-  systemctl restart gitsi-videobridge2
+  systemctl restart jitsi-videobridge2
 }
 
 
@@ -400,12 +407,12 @@ update_private_route53
 create_awscli_conf
 create_awslogs_conf
 install_coudwatchagent
-add_gitsi_sources
+add_jitsi_sources
 install_etherpad
 start_etherpad
 raise_system_limits
-configure_gitsi_install
-install_gitsi
+configure_jitsi_install
+install_jitsi
 configure_prosody
 restart_services
 letsencrypt

@@ -1,7 +1,7 @@
 # --------------------------------------------------------------------------
 # EC2 Instance Profile
 # --------------------------------------------------------------------------
-resource "aws_iam_role" "gitsi" {
+resource "aws_iam_role" "jitsi" {
   name = var.name
 
   assume_role_policy = data.aws_iam_policy_document.tr.json
@@ -15,19 +15,19 @@ resource "aws_iam_role" "gitsi" {
   }
 }
 
-resource "aws_iam_instance_profile" "gitsi" {
+resource "aws_iam_instance_profile" "jitsi" {
   name_prefix = "${var.name}-"
-  role        = aws_iam_role.gitsi.name
+  role        = aws_iam_role.jitsi.name
 }
 
 resource "aws_iam_role_policy_attachment" "attach_AmazonSSMManagedInstanceCore" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-  role       = aws_iam_role.gitsi.name
+  role       = aws_iam_role.jitsi.name
 }
 
 resource "aws_iam_role_policy_attachment" "attach_CloudWatchAgentServerPolicy" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
-  role       = aws_iam_role.gitsi.name
+  role       = aws_iam_role.jitsi.name
 }
 
 
@@ -50,8 +50,8 @@ data "aws_iam_policy_document" "tr" {
   }
 }
 
-# gitsi Policy document
-data "aws_iam_policy_document" "gitsi" {
+# jitsi Policy document
+data "aws_iam_policy_document" "jitsi" {
   statement {
     sid = "Route53"
     actions = [
@@ -83,14 +83,14 @@ data "aws_iam_policy_document" "gitsi" {
   }
 }
 
-resource "aws_iam_policy" "gitsi" {
-  policy = data.aws_iam_policy_document.gitsi.json
-  name   = "${var.name}-gitsi"
+resource "aws_iam_policy" "jitsi" {
+  policy = data.aws_iam_policy_document.jitsi.json
+  name   = "${var.name}-jitsi"
 }
 
-resource "aws_iam_role_policy_attachment" "attach-gitsi" {
-  policy_arn = aws_iam_policy.gitsi.arn
-  role       = aws_iam_role.gitsi.name
+resource "aws_iam_role_policy_attachment" "attach-jitsi" {
+  policy_arn = aws_iam_policy.jitsi.arn
+  role       = aws_iam_role.jitsi.name
 }
 
 # Cross-Account
@@ -114,7 +114,7 @@ resource "aws_iam_role_policy_attachment" "attach_assume" {
   count = var.enable_cross_account == "1" ? 1 : 0
 
   policy_arn = aws_iam_policy.assume[0].arn
-  role       = aws_iam_role.gitsi.name
+  role       = aws_iam_role.jitsi.name
 }
 
 
