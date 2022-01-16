@@ -223,10 +223,14 @@ database {
 EOT
   TABLECOUNT=$(mysql --defaults-file=$MYSQL_PREF ${db_name} -s --skip-column-names -e "SELECT COUNT(*) FROM prosody;")
   echo "TABLECOUNT: $TABLECOUNT"
-  if [ $TABLECOUNT -lt 2 ]; then
+  two=2
+  if [ "$TABLECOUNT" -lt "$two" ]; then
     echo "Migrate from filestore to Database"
     # Has to be set in UserData (not set by default) or otherwise prosody-migrator will fail...
     export HOME=/root
+    apt install prosody-migrator
+    apt install libmysqlclient-dev
+    apt-get install liblua5.1-0-dev
     prosody-migrator filestore database --config=/tmp/migrator.cfg.lua
   else
     PROSODYDIR=$(echo "auth.$HOSTNAME" | sed 's/[.]/%2e/g')
@@ -256,8 +260,8 @@ function add_user() {
 
 function configure_nginx() {
   cp /usr/share/jitsi-meet/interface_config.js /etc/jitsi/meet/$HOSTNAME-interface_config.js
-  sed -i "s|^}|\    location ^~ /etherpad/ {\n        proxy_pass http://localhost:9001/;\n        proxy_set_header X-Forwarded-For \$remote_addr;\n        proxy_buffering off;\n        proxy_set_header       Host \$host;\n    }\n}|g" /etc/nginx/sites-enabled/$HOSTNAME.conf
-  sed -i "s|^}|\    location = /interface_config.js {\n        alias /etc/jitsi/meet/$HOSTNAME-interface_config.js;\n    }\n}|g" /etc/nginx/sites-enabled/$HOSTNAME.conf
+  #sed -i "s|^}|\    location ^~ /etherpad/ {\n        proxy_pass http://localhost:9001/;\n        proxy_set_header X-Forwarded-For \$remote_addr;\n        proxy_buffering off;\n        proxy_set_header       Host \$host;\n    }\n}|g" /etc/nginx/sites-enabled/$HOSTNAME.conf
+  #sed -i "s|^}|\    location = /interface_config.js {\n        alias /etc/jitsi/meet/$HOSTNAME-interface_config.js;\n    }\n}|g" /etc/nginx/sites-enabled/$HOSTNAME.conf
 }
 
 function configure_meet() {
