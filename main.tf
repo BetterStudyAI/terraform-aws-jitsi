@@ -40,9 +40,9 @@ data "aws_subnet" "subnet" {
 locals {
   tags = merge(
     var.tags,
-    map(
-      "Name", var.name
-    )
+    tomap({
+      "Name" = var.name
+    })
   )
   tags_as_list_of_maps = flatten([
     for key in keys(local.tags) : merge(
@@ -79,7 +79,7 @@ resource "aws_ssm_parameter" "jitsi_ssm_key_pair_private" {
   count = var.key_pair_name == null ? 1 : 0
 
   name        = "/jitsi/id_rsa"
-  description = "SSH Private Key for Jitsi - ${var.name}"
+  description = "SSH Private Key for jitsi - ${var.name}"
   type        = "SecureString"
   value       = tls_private_key.jitsi[0].private_key_pem
   overwrite   = true
@@ -91,7 +91,7 @@ resource "aws_ssm_parameter" "jitsi_ssm_key_pair_public" {
   count = var.key_pair_name == null ? 1 : 0
 
   name        = "/jitsi/id_rsa.pub"
-  description = "SSH Public Key for Jitsi - ${var.name}"
+  description = "SSH Public Key for jitsi - ${var.name}"
   type        = "String"
   value       = tls_private_key.jitsi[0].public_key_openssh
   overwrite   = true
@@ -105,7 +105,7 @@ resource "aws_ssm_parameter" "jitsi_ssm_key_pair_public" {
 # --------------------------------------------------------------------------
 resource "aws_security_group" "jitsi" {
   name_prefix = "${var.name}-"
-  description = "Jitsi Meet"
+  description = "jitsi Meet"
   vpc_id      = var.vpc_id
 
   tags = local.tags
@@ -264,9 +264,9 @@ resource "aws_launch_template" "jitsi" {
 resource "aws_autoscaling_group" "jitsi" {
   name              = var.name
   max_size          = 1
-  min_size          = 1
-  desired_capacity  = 1
-  force_delete      = true
+  min_size          = 0
+  desired_capacity  = 1 #change it back to 1 to reinstall the instances
+  force_delete      = false
   health_check_type = "EC2"
 
   launch_template {

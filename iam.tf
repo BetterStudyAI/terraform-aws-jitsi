@@ -50,7 +50,7 @@ data "aws_iam_policy_document" "tr" {
   }
 }
 
-# Jitsi Policy document
+# jitsi Policy document
 data "aws_iam_policy_document" "jitsi" {
   statement {
     sid = "Route53"

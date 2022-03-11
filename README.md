@@ -1,6 +1,6 @@
 # terraform-aws-jitsi
 
-This repository contains Terraform code to create an Jitsi Meet instance on AWS backed by an RDS Aurora Serverless database for authentication. 
+This repository contains Terraform code to create an jitsi Meet instance on AWS backed by an RDS Aurora Serverless database for authentication. 
 
 <div align="center">
 <img src=https://i.imgur.com/tmgNxtN.png" width="200" height="200">
@@ -42,11 +42,11 @@ You need the following before deploying this Terraform module:
 
 ## Features
 
-* ✅ Jitsi Meet (Ubuntu 18.04)
+* ✅ jitsi Meet (Ubuntu 18.04)
   * ✅ Authentication (Users need to be authenticated to create new conferences) + Guest access (can only join existing conferences)
   * ✅ LetsEncrypt certificate for HTTPS
-  * ✅ Collaborative working on a shared document during Jitsi conference ([etherpad-lite](https://github.com/ether/etherpad-lite)) 
-  * ✅ SQL Database for Jitsi authorized accounts
+  * ✅ Collaborative working on a shared document during jitsi conference ([etherpad-lite](https://github.com/ether/etherpad-lite)) 
+  * ✅ SQL Database for jitsi authorized accounts
 * ✅ Aurora Serverless
   * ✅ MySQL
   * ✅ Can scale down to 0 to reduce costs
@@ -60,7 +60,7 @@ You need the following before deploying this Terraform module:
 * SecurityGroup
   * ✅ Allow SSH by workstation IPv4 (can be disabled)
   * ✅ Add other allowed IPv4 CIDRs for SSH
-  * ✅ Restrict Jitsi access CIDRs (Default: not restricted)
+  * ✅ Restrict jitsi access CIDRs (Default: not restricted)
 * ✅ _OPTIONAL:_ AWS Key Pair (Default: true)
 * ✅ _OPTIONAL:_ SSM Parameters for AWS Key Pair (Default: true)
 * ✅ _OPTIONAL:_ Automatic EBS Snapshots via Data Lifecycle Manager (Default: true)
@@ -140,7 +140,7 @@ module "jitsi" {
 
 ### Add authenticated Users
 
-To create a new user in Prosody which can create new conferences, ssh into the Jitsi instance and execute:
+To create a new user in Prosody which can create new conferences, ssh into the jitsi instance and execute:
 
 ```
 prosodyctl adduser newuser@<HOST>.<DOMAIN>
@@ -151,9 +151,9 @@ prosodyctl adduser hans@meet.example.com
 
 
 ## Notes
-* ↪️ The Jitsi instance can be terminated at any time (AutoScalingGroup will then start a fresh new instance, but the authorized users in the SQL database will retain)
+* ↪️ The jitsi instance can be terminated at any time (AutoScalingGroup will then start a fresh new instance, but the authorized users in the SQL database will retain)
 * 💰To reduce costs, you can stop the instance (e.g. with [diodonfrost/lambda-scheduler-stop-start](https://registry.terraform.io/modules/diodonfrost/lambda-scheduler-stop-start/aws)) - Aurora Serverless will then scale down to zero.
-* If you do not specify a RDS DB Subnet Group (´var.db_subnet_group_name`), then the Aurora DB will be created in the same subnets as Jitsi (⚠️Public Subnets!)
+* If you do not specify a RDS DB Subnet Group (´var.db_subnet_group_name`), then the Aurora DB will be created in the same subnets as jitsi (⚠️Public Subnets!)
 * When you enable `var.enable_cross_account` you need to specify (`var.arn_role`) an IAM role in the AWS Account where the Public & Private Route53 Zones reside in. This role has to have the policy to allow `route53:ChangeResourceRecordSets` on the desired Route53 Zones.
 * Route53 records will be created in UserData => during a `terraform destroy` these records have be deleted manually (see [TODO](#TODO))
 * Only MySQL is supported at the moment, because PostgreSQL in Aurora-Serverless can **not** scale down to zero
@@ -217,21 +217,21 @@ prosodyctl adduser hans@meet.example.com
 | db\_name | Name of Database | `string` | `"jitsi"` | no |
 | db\_subnet\_group\_name | Name for DB subnet group to associate with this Aurora Cluster | `string` | `null` | no |
 | deletion\_protection | Enable / Disable deletion protection for this Aurora Cluster | `bool` | `false` | no |
-| domain | The domain part of the Route53 A record referencing the Jitsi DNS (e.g. `example` for `jitsi.example.com`) | `string` | n/a | yes |
+| domain | The domain part of the Route53 A record referencing the jitsi DNS (e.g. `example` for `jitsi.example.com`) | `string` | n/a | yes |
 | ebs\_size | EBS root block device size in gigabytes (e.g. `20`) | `number` | `10` | no |
 | ebs\_type | EBS root block device type (e.g. `standard`, `gp2`) | `string` | `"gp2"` | no |
 | ec2\_instance\_type | EC2 instance type | `string` | n/a | yes |
 | enable\_cross\_account | Enable cross-account with IAM Role to assume by UserData for updating of Route53 records (Valid values: `1` => Enable, `0` => Disable) | `string` | `"0"` | no |
 | enable\_dlm | Enable / Disable Data Lifecycle Manager for automatic EBS Snapshots | `bool` | `true` | no |
-| host | The host part of the Route53 A record referencing the Jitsi DNS (e.g. `jitsi` for `jitsi.example.com`) | `string` | `"meet"` | no |
-| jitsi\_cidrs | IPV4 CIDRs to allow for Jitsi access | `map(string)` | <pre>{<br>  "ALL-IPv4": "0.0.0.0/0"<br>}</pre> | no |
-| key\_pair\_name | Name of pre-existing AWS Key Pair name to associate with Jitsi | `string` | `null` | no |
+| host | The host part of the Route53 A record referencing the jitsi DNS (e.g. `jitsi` for `jitsi.example.com`) | `string` | `"meet"` | no |
+| jitsi\_cidrs | IPV4 CIDRs to allow for jitsi access | `map(string)` | <pre>{<br>  "ALL-IPv4": "0.0.0.0/0"<br>}</pre> | no |
+| key\_pair\_name | Name of pre-existing AWS Key Pair name to associate with jitsi | `string` | `null` | no |
 | kms\_key | The ARN, ID or AliasARN for the KMS encryption key (RDS encryption-at-rest) | `string` | `null` | no |
 | letsencrypt\_email | E-Mail address for LetsEncrypt | `string` | n/a | yes |
 | name | Name for all resources (preferably generated by terraform-null-label `module.id`) | `string` | `"jitsi-meet"` | no |
 | preferred\_maintenance\_window | Weekly time range during which system changes can occur (in UTC - e.g. `wed:04:00-wed:04:30` => Wednesday between 04:00-04:30) | `string` | `"sun:02:30-sun:03:30"` | no |
 | private\_zone\_id | Route53 Private Hosted Zone ID to create Bastion Host DNS records | `string` | n/a | yes |
-| public\_subnet\_ids | AutoScalingGroup Subnet IDs to create Jitsi Host into (=> public) | `list(string)` | n/a | yes |
+| public\_subnet\_ids | AutoScalingGroup Subnet IDs to create jitsi Host into (=> public) | `list(string)` | n/a | yes |
 | public\_zone\_id | Route53 Public Hosted Zone ID to create Bastion Host DNS records | `string` | n/a | yes |
 | retain\_count | How many snapshots to keep (valid value: integeger between `1` and `1000`) | `string` | `7` | no |
 | schedule\_interval | How often this lifecycle policy should be evaluated (valid values: `1`, `2`, `3`, `4`, `6`, `8`, `12` or `24`) | `number` | `24` | no |
@@ -245,7 +245,7 @@ prosodyctl adduser hans@meet.example.com
 | serverless\_timeout\_action | SERVERLESS: Action to take when a Aurora Serverless action timeouts (e.g. `ForceApplyCapacityChange` or `RollbackCapacityChange`) | `string` | `"RollbackCapacityChange"` | no |
 | ssh\_cidrs | IPV4 CIDRs to allow for SSH access | `map(string)` | `{}` | no |
 | state | Enable / Disable DLM Lifecycle Policy (e.g. `ENABLED` or `DISABLED`) | `string` | `"ENABLED"` | no |
-| tags | Tags as map (preferably generated by terraform-null-label `module.tags`) | `map(string)` | <pre>{<br>  "Module": "terraform-aws-jitsi",<br>  "Project": "Jitsi"<br>}</pre> | no |
+| tags | Tags as map (preferably generated by terraform-null-label `module.tags`) | `map(string)` | <pre>{<br>  "Module": "terraform-aws-jitsi",<br>  "Project": "jitsi"<br>}</pre> | no |
 | tags\_to\_add\_map | Map of extra tags to add to the snapshots | `map(string)` | <pre>{<br>  "SnapshotCreator": "DLM"<br>}</pre> | no |
 | timezone | Timezone set in the EC2 instance UserData | `string` | `"Europe/Berlin"` | no |
 | vpc\_id | ID of VPC | `string` | n/a | yes |
@@ -255,11 +255,11 @@ prosodyctl adduser hans@meet.example.com
 | Name | Description |
 |------|-------------|
 | endpoint | Endpoint for RDS Aurora cluster |
-| fqdn | FQDN of Jitsi-Meet |
+| fqdn | FQDN of jitsi-meet |
 | instance\_profile\_arn | ARN of EC2 Instance Profile |
 | role\_arn | ARN of EC2 role |
-| sg\_id | Jitsi SG ID (e.g. for adding it outside of the module to other SGs) |
-| sns\_topic\_arn | Jitsi ASG scaling events SNS topic ARN |
+| sg\_id | jitsi SG ID (e.g. for adding it outside of the module to other SGs) |
+| sns\_topic\_arn | jitsi ASG scaling events SNS topic ARN |
 
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
 

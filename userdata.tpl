@@ -16,7 +16,7 @@ function associate_eip() {
   export INSTANCE_ID=$(curl -sLf http://169.254.169.254/latest/meta-data/instance-id)
 
   # Get free EIPs with matching Name tag and which are not associated with an InstanceId
-  for eip in $(aws ec2 describe-addresses --filters Name=tag:Name,Values=${name} --query 'Addresses[*]' --output json | jq -r '.[] | select(.InstanceId == null)  | .AllocationId')
+  for eip in $(aws ec2 describe-addresses --filters Name=tag:Name,Values=${name} --query 'Addresses[*]' --output json | jq -r '.[] | .AllocationId')
   do
     if [ "$eip" == null ]
     then
@@ -119,7 +119,7 @@ EOF
 }
 
 function add_jitsi_sources(){
-  # Add Jitsi sources
+  # Add jitsi sources
   echo 'deb https://download.jitsi.org stable/' >> /etc/apt/sources.list.d/jitsi-stable.list
   wget -qO - https://download.jitsi.org/jitsi-key.gpg.key | apt-key add -
   apt-get update
@@ -127,7 +127,7 @@ function add_jitsi_sources(){
 
 function install_etherpad(){
   # Install Etherpad
-  curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
+  curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
   apt install -y nodejs
   cd /opt/ || exit
   adduser --system --home /opt/etherpad --group etherpad-lite
@@ -170,13 +170,20 @@ function raise_system_limits() {
 }
 
 function configure_jitsi_install() {
-  # Configure Jitsi Install
+  # Configure jitsi Install
   echo "jitsi-videobridge jitsi-videobridge/jvb-hostname string $HOSTNAME" | debconf-set-selections
   echo "jitsi-meet-web-config jitsi-meet/cert-choice select 'Generate a new self-signed certificate'" | debconf-set-selections
 }
 
 function install_jitsi() {
-  # Install Jitsi, Jitsi PostgreSQL support
+  # Install jitsi, jitsi PostgreSQL support
+  echo deb http://packages.prosody.im/debian $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list
+  wget https://prosody.im/files/prosody-debian-packages.key -O- | sudo apt-key add -
+  curl https://download.jitsi.org/jitsi-key.gpg.key | sudo sh -c 'gpg --dearmor > /usr/share/keyrings/jitsi-keyring.gpg'
+  echo 'deb [signed-by=/usr/share/keyrings/jitsi-keyring.gpg] https://download.jitsi.org stable/' | sudo tee /etc/apt/sources.list.d/jitsi-stable.list > /dev/null
+
+  # update all package sources
+  sudo apt update
   apt-get --option=Dpkg::Options::=--force-confold --option=Dpkg::options::=--force-unsafe-io --assume-yes --quiet install jitsi-meet lua-dbi-mysql
 }
 
@@ -216,10 +223,14 @@ database {
 EOT
   TABLECOUNT=$(mysql --defaults-file=$MYSQL_PREF ${db_name} -s --skip-column-names -e "SELECT COUNT(*) FROM prosody;")
   echo "TABLECOUNT: $TABLECOUNT"
-  if [ $TABLECOUNT -lt 2 ]; then
+  two=2
+  if [ "$TABLECOUNT" -lt "$two" ]; then
     echo "Migrate from filestore to Database"
     # Has to be set in UserData (not set by default) or otherwise prosody-migrator will fail...
     export HOME=/root
+    apt install prosody-migrator
+    apt install libmysqlclient-dev
+    apt-get install liblua5.1-0-dev
     prosody-migrator filestore database --config=/tmp/migrator.cfg.lua
   else
     PROSODYDIR=$(echo "auth.$HOSTNAME" | sed 's/[.]/%2e/g')
@@ -249,8 +260,8 @@ function add_user() {
 
 function configure_nginx() {
   cp /usr/share/jitsi-meet/interface_config.js /etc/jitsi/meet/$HOSTNAME-interface_config.js
-  sed -i "s|^}|\    location ^~ /etherpad/ {\n        proxy_pass http://localhost:9001/;\n        proxy_set_header X-Forwarded-For \$remote_addr;\n        proxy_buffering off;\n        proxy_set_header       Host \$host;\n    }\n}|g" /etc/nginx/sites-enabled/$HOSTNAME.conf
-  sed -i "s|^}|\    location = /interface_config.js {\n        alias /etc/jitsi/meet/$HOSTNAME-interface_config.js;\n    }\n}|g" /etc/nginx/sites-enabled/$HOSTNAME.conf
+  #sed -i "s|^}|\    location ^~ /etherpad/ {\n        proxy_pass http://localhost:9001/;\n        proxy_set_header X-Forwarded-For \$remote_addr;\n        proxy_buffering off;\n        proxy_set_header       Host \$host;\n    }\n}|g" /etc/nginx/sites-enabled/$HOSTNAME.conf
+  #sed -i "s|^}|\    location = /interface_config.js {\n        alias /etc/jitsi/meet/$HOSTNAME-interface_config.js;\n    }\n}|g" /etc/nginx/sites-enabled/$HOSTNAME.conf
 }
 
 function configure_meet() {

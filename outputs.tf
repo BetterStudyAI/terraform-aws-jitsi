@@ -1,5 +1,5 @@
 output "fqdn" {
-  description = "FQDN of Jitsi-Meet"
+  description = "FQDN of jitsi-meet"
   value       = "${var.host}.${var.domain}"
 }
 
@@ -14,12 +14,12 @@ output "instance_profile_arn" {
 }
 
 output "sns_topic_arn" {
-  description = "Jitsi ASG scaling events SNS topic ARN"
+  description = "jitsi ASG scaling events SNS topic ARN"
   value       = aws_sns_topic.jitsi.arn
 }
 
 output "sg_id" {
-  description = "Jitsi SG ID (e.g. for adding it outside of the module to other SGs)"
+  description = "jitsi SG ID (e.g. for adding it outside of the module to other SGs)"
   value       = aws_security_group.jitsi.id
 }
 
